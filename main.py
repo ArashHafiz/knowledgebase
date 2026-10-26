@@ -103,8 +103,7 @@ def sort_document_results(results):
 # ask questions
 @app.post("/ask")
 def ask_question(question: str, db: Session = Depends(get_db)):
-	words = question.lower().split()
-	words = words.translate(str.maketrans("", "", string.punctuation))
+	words = question.lower().translate(str.maketrans("", "", string.punctuation)).split()
 	keywords = [word for word in words if word not in STOP_WORDS]
 	results = []
 	
