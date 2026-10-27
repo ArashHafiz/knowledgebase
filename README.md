@@ -119,7 +119,7 @@ Search is currently case-insensitive and uses substring matching. For example, a
 Use `POST /ask` with a question parameter:
 
 ```text
-/ask?question=When%20did%20uranium%20die
+/ask?question=Where%20is%20uranium%20found
 ```
 
 The endpoint lowercases the question, removes punctuation, splits it into keywords, filters common stop words, and searches for each remaining keyword.
