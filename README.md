@@ -107,7 +107,7 @@ The API stores the filename, text content, word count, line count, and creation 
 Use `GET /search` with a query parameter:
 
 ```text
-/search?query=brezhnev
+/search?query=uranium
 ```
 
 The response contains matching documents, relevant lines, match counts, and document-level relevance scores.
@@ -119,7 +119,7 @@ Search is currently case-insensitive and uses substring matching. For example, a
 Use `POST /ask` with a question parameter:
 
 ```text
-/ask?question=When%20did%20Brezhnev%20die
+/ask?question=When%20did%20uranium%20die
 ```
 
 The endpoint lowercases the question, removes punctuation, splits it into keywords, filters common stop words, and searches for each remaining keyword.
