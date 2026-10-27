@@ -45,12 +45,9 @@ The SQLite database and virtual environment are local runtime files and do not n
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ArashHafiz/knowledgebase
 cd knowledgebase
 ```
-
-Replace `<repository-url>` with the URL of this repository.
-
 ### 2. Create and activate a virtual environment
 
 **Windows (Command Prompt):**
