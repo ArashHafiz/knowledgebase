@@ -12,4 +12,3 @@ class Document(Base):
 	content: Mapped[str] = mapped_column(Text)
 	date_added: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 	word_count: Mapped[int] = mapped_column(Integer, default=0)
-	line_count: Mapped[int] = mapped_column(Integer, default=0)
