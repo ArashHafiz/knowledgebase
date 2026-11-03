@@ -2,17 +2,23 @@ from fastapi import FastAPI, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from models import Document
 from database import init_db, get_db
-import string
+import re
 
 app = FastAPI()
 init_db()
 
 STOP_WORDS = ["the", "is", "in", "and", "to", "of", "a", "that", "it", 
 			   "on", "for", "with", "as", "this", "by", "an", "be", "are", "from", "at",
-			   "or", "which", "but", "not", "have", "has", "was", "were", "they",
+			   "or", "which", "who", "but", "not", "have", "has", "was", "were", "they",
 			   "their", "them", "he", "she", "his", "her", "when", "where", "what", 
 			   "how", "why", "if", "then", "else", "all", "any", "some", "no", "yes", 
 			   "do", "does", "did",]
+
+def normalise_text(text):
+	text = text.lower()
+	text = re.sub(r"'s\b", "", text) # Remove possessive apostrophes
+	text = re.sub(r"[^\w\s]", "", text) # Remove punctuation
+	return text.split()
 
 # list doc
 @app.get("/documents")
@@ -47,58 +53,62 @@ def get_document(doc_id: int, db: Session = Depends(get_db)):
 # search
 @app.get("/search")
 def search(query: str, db: Session = Depends(get_db)):
-	docs = db.query(Document).all()
-	results = []
-	total_score = 0
+    query_words = normalise_text(query)
 
-	# Examine each doc
-	for d in docs:
-		if query.lower() in d.content.lower():
-			doc_results = []
-			doc_matching_words = 0
-			doc_matching_lines = 0
-			doc_score = 0
+    if not query_words: # Return empty results if query is empty or only has stop words (nothingburger)
+        return {"total_score": 0, "results": []}
 
-			# Examine each line
-			for line_number, line in enumerate(d.content.splitlines(), start=1):
-				if query.lower() in line.lower():
-					matching_words = 0
-					doc_matching_lines += 1
+    normalised_query = " ".join(query_words)
+    docs = db.query(Document).all()
+    results = []
+    total_score = 0
 
-					# Examine each word
-					for word in line.split():
-						if query.lower() in word.lower():
-							matching_words += 1
-					doc_matching_words += matching_words
+    for d in docs:
+        normalised_content = " ".join(normalise_text(d.content))
 
-					# Add line info to doc_results
-					doc_results.append({
-						"line_number": line_number,
-						"doc_id": d.id,
-						"filename": d.filename,
-						"line": line.strip(),
-						"matches": matching_words
-					})
+        if normalised_query in normalised_content:
+            doc_results = []
+            doc_matching_words = 0
+            doc_matching_lines = 0
 
-			doc_results = sort_document_results(doc_results)
-			doc_score = (doc_matching_lines * 3 + doc_matching_words * 2)/max(1, d.word_count) # max(1, d.word_count) prevents zero-division
-			total_score += doc_score # Score for the entire query
+            for line_number, line in enumerate(d.content.splitlines(), start=1):
+                normalised_line = " ".join(normalise_text(line))
 
-			# Add doc_results and doc info to results
-			results.append({
-				"id": d.id,
-				"filename": d.filename,
-				"results": doc_results,
-				"score": doc_score
-			})
+                if normalised_query in normalised_line:
+                    matching_words = sum(
+                        1 for word in normalise_text(line)
+                        if any(query_word in word for query_word in query_words)
+                    )
 
-	results = sort_search_results(results)
+                    doc_matching_lines += 1
+                    doc_matching_words += matching_words
 
-	# Return total score with results list
-	return {
-		"total_score": total_score,
-		"results": results
-	}
+                    doc_results.append({
+                        "line_number": line_number,
+                        "doc_id": d.id,
+                        "filename": d.filename,
+                        "line": line.strip(),
+                        "matches": matching_words
+                    })
+
+            doc_results = sort_document_results(doc_results)
+
+            doc_score = (
+                doc_matching_lines * 3 + doc_matching_words * 2
+            ) / max(1, d.word_count)
+
+            total_score += doc_score
+
+            results.append({
+                "id": d.id,
+                "filename": d.filename,
+                "results": doc_results,
+                "score": doc_score
+            })
+
+    results = sort_search_results(results)
+
+    return {"total_score": total_score, "results": results}
 
 # sort results in descending order of score
 def sort_search_results(results):
@@ -110,7 +120,7 @@ def sort_document_results(results):
 # ask questions
 @app.post("/ask")
 def ask_question(question: str, db: Session = Depends(get_db)):
-	words = question.lower().translate(str.maketrans("", "", string.punctuation)).split() # Remove caps & punctuation
+	words = normalise_text(question)	
 	keywords = [word for word in words if word not in STOP_WORDS]
 	results = {}
 	
