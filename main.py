@@ -21,6 +21,35 @@ def normalise_text(text):
 	text = re.sub(r"[^\w\s]", "", text) # Remove punctuation
 	return text.split()
 
+def split_into_chunks(content):
+    content = content.replace("\r\n", "\n").replace("\r", "\n") # Make line breaks consistent (standardise to Unix-style)
+    chunks = []
+
+    paragraphs = re.finditer(
+        r"\S.*?(?=\n[ \t]*\n|\Z)",
+        content,
+        re.DOTALL
+    ) # Find paragraphs separated by one or more blank lines
+
+    for chunk_number, match in enumerate(paragraphs, start=1):
+        chunk_text = match.group().strip() # Remove leading/trailing whitespace
+
+        if not chunk_text:
+            continue
+
+		# Number the lines
+        start_line = content.count("\n", 0, match.start()) + 1
+        end_line = content.count("\n", 0, match.end()) + 1
+
+        chunks.append({
+            "chunk_number": chunk_number,
+            "start_line": start_line,
+            "end_line": end_line,
+            "text": chunk_text
+        })
+
+    return chunks
+
 # list doc
 @app.get("/documents")
 def list_documents(db: Session = Depends(get_db)):
@@ -56,8 +85,8 @@ def get_document(doc_id: int, db: Session = Depends(get_db)):
 def search(query: str, db: Session = Depends(get_db)):
     query_words = normalise_text(query)
 
-    if not query_words: # Return empty results if query is empty or only has stop words (nothingburger)
-        return {"total_score": 0, "results": []}
+    if not query_words:
+        return {"total_score": 0, "results": []} # Return empty results for nothingburgers
 
     normalised_query = " ".join(query_words)
     docs = db.query(Document).all()
@@ -65,40 +94,42 @@ def search(query: str, db: Session = Depends(get_db)):
     total_score = 0
 
     for d in docs:
-        normalised_content = " ".join(normalise_text(d.content))
+        chunks = split_into_chunks(d.content)
+        doc_results = []
+        doc_matching_words = 0
+        doc_matching_chunks = 0
 
-        if normalised_query in normalised_content:
-            doc_results = []
-            doc_matching_words = 0
-            doc_matching_lines = 0
+        for chunk in chunks:
+            normalised_chunk = normalise_text(chunk["text"])
+            normalised_chunk_text = " ".join(normalised_chunk)
 
-            for line_number, line in enumerate(d.content.splitlines(), start=1):
-                normalised_line = " ".join(normalise_text(line))
+            if normalised_query in normalised_chunk_text:
+                matching_words = sum(
+                    1 for word in normalised_chunk
+                    if any(query_word in word for query_word in query_words)
+                )
 
-                if normalised_query in normalised_line:
-                    matching_words = sum(
-                        1 for word in normalise_text(line)
-                        if any(query_word in word for query_word in query_words)
-                    )
+                doc_matching_chunks += 1
+                doc_matching_words += matching_words
 
-                    doc_matching_lines += 1
-                    doc_matching_words += matching_words
+                doc_results.append({
+                    "chunk_number": chunk["chunk_number"],
+                    "start_line": chunk["start_line"],
+                    "end_line": chunk["end_line"],
+                    "doc_id": d.id,
+                    "filename": d.filename,
+                    "text": chunk["text"],
+                    "matches": matching_words
+                })
 
-                    doc_results.append({
-                        "line_number": line_number,
-                        "doc_id": d.id,
-                        "filename": d.filename,
-                        "line": line.strip(),
-                        "matches": matching_words
-                    })
-
-            doc_results = sort_document_results(doc_results)
-
+        if doc_results:
             doc_score = (
-                doc_matching_lines * 3 + doc_matching_words * 2
-            ) / max(1, d.word_count) # max(1, d.word_count) prevents zero-division
+                doc_matching_chunks * 3 + doc_matching_words * 2
+            ) / max(1, d.word_count)
 
             total_score += doc_score
+
+            doc_results = sort_document_results(doc_results)
 
             results.append({
                 "id": d.id,
@@ -130,37 +161,38 @@ def ask_question(question: str, db: Session = Depends(get_db)):
     for keyword in keywords:
         search_result = search(keyword, db)
 
-        # Number of documents containing this keyword
         document_frequency = len(search_result["results"])
 
-        # Calculate the keyword's IDF weight
         idf = math.log(
             (total_documents + 1) / (document_frequency + 1)
-        ) + 1
+        ) + 1 # Calculate inverse document frequency
 
         for document in search_result["results"]:
-            for line_result in document["results"]:
+            for chunk_result in document["results"]:
+
                 results_key = (
-                    f"{line_result['doc_id']}_{line_result['line_number']}"
-                )
+                    f"{chunk_result['doc_id']}_"
+                    f"{chunk_result['chunk_number']}"
+                ) # In form X_Y
 
                 if results_key not in results:
                     results[results_key] = {
-                        "doc_id": line_result["doc_id"],
-                        "filename": line_result["filename"],
-                        "line_number": line_result["line_number"],
-                        "line": line_result["line"],
+                        "doc_id": chunk_result["doc_id"],
+                        "filename": chunk_result["filename"],
+                        "chunk_number": chunk_result["chunk_number"],
+                        "start_line": chunk_result["start_line"],
+                        "end_line": chunk_result["end_line"],
+                        "text": chunk_result["text"],
                         "matched_keywords": set(),
                         "score": 0
                     }
 
-                results[results_key]["matched_keywords"].add(keyword)
-
-                # Add the keyword's weight to the passage score
-                results[results_key]["score"] += idf
+                if keyword not in results[results_key]["matched_keywords"]:
+                    results[results_key]["matched_keywords"].add(keyword)
+                    results[results_key]["score"] += idf
 
     ranked_results = [{
-        **result, # Unpack existing result dictionary
+        **result,
         "matched_keywords": sorted(result["matched_keywords"])
     } for result in results.values()]
 
