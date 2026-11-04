@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, UploadFile, File
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from models import Document
 from database import init_db, get_db
+from ai_service import generate_answer
 import re
 import math
 
@@ -165,7 +166,7 @@ def ask_question(question: str, db: Session = Depends(get_db)):
 
         idf = math.log(
             (total_documents + 1) / (document_frequency + 1)
-        ) + 1 # Calculate inverse document frequency
+        ) + 1
 
         for document in search_result["results"]:
             for chunk_result in document["results"]:
@@ -173,7 +174,7 @@ def ask_question(question: str, db: Session = Depends(get_db)):
                 results_key = (
                     f"{chunk_result['doc_id']}_"
                     f"{chunk_result['chunk_number']}"
-                ) # In form X_Y
+                )
 
                 if results_key not in results:
                     results[results_key] = {
@@ -202,7 +203,38 @@ def ask_question(question: str, db: Session = Depends(get_db)):
         reverse=True
     )
 
-    return ranked_results[:5]
+    retrieved_chunks = ranked_results[:5]
+
+    if not retrieved_chunks:
+        return {
+            "answer": "The available documents do not contain sufficient information to answer this question.",
+            "sources": []
+        }
+
+    try:
+        answer = generate_answer(question, retrieved_chunks)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service could not generate an answer. Please try again later."
+        ) from e
+
+    sources = [
+        {
+            "filename": chunk["filename"],
+            "doc_id": chunk["doc_id"],
+            "chunk_number": chunk["chunk_number"],
+            "start_line": chunk["start_line"],
+            "end_line": chunk["end_line"]
+        }
+        for chunk in retrieved_chunks
+    ]
+
+    return {
+        "answer": answer,
+        "sources": sources
+    }
 
 # sort question results in descending order of score
 def sort_question_results(results):
