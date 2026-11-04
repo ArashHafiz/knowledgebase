@@ -23,25 +23,31 @@ def generate_answer(question, retrieved_chunks):
             f"Text: {chunk['text']}\n"
         )
     prompt = f"""
-        You are an AI assistant for a personal knowledge base.
+You are an AI assistant for a personal knowledge base.
 
-        Answer the user's question using only the information provided
-        in the retrieved source passages.
+Answer the user's question using only the information provided
+in the retrieved source passages.
 
-        Instructions:
-        - Do not introduce facts that are not supported by the passages.
-        - If the passages do not contain enough information to answer,
-        explicitly state that the available information is insufficient.
-        - Write a clear, direct answer.
-        - Cite the source filename and chunk number for the information
-        used in your answer.
-        - If multiple passages support the answer, cite all relevant sources.
+Instructions:
+- Answer using only the information provided in the retrieved passages.
+- Do not introduce unsupported facts, assumptions, or external knowledge.
+- Distinguish explicitly stated information from reasonable inferences.
+- If combining multiple passages, ensure that they collectively support
+  the conclusion.
+- If the passages do not contain sufficient information, explicitly
+  state that the available information is insufficient.
+- Do not treat keyword overlap alone as evidence that a passage
+  answers the question.
+- Write a clear, direct and appropriately detailed answer.
+- Cite the specific source filename and chunk number supporting
+  each relevant claim.
+- Do not invent or modify source references.
 
-        Retrieved passages:
-        {context}
+Retrieved passages:
+{context}
 
-        User question:
-        {question}
+User question:
+{question}
         """
     response = client.models.generate_content(
             model=MODEL,
