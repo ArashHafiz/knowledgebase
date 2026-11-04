@@ -11,9 +11,9 @@ init_db()
 
 STOP_WORDS = ["the", "is", "in", "and", "to", "of", "a", "that", "it", 
 			   "on", "for", "with", "as", "this", "by", "an", "be", "are", "from", "at",
-			   "or", "which", "who", "but", "not", "have", "has", "was", "were", "they",
+			   "or", "which", "who", "but", "have", "has", "was", "were", "they",
 			   "their", "them", "he", "she", "his", "her", "when", "where", "what", 
-			   "how", "why", "if", "then", "else", "all", "any", "some", "no", "yes", 
+			   "how", "why", "if", "then", "else", "all", "any", "some", "yes", 
 			   "do", "does", "did",]
 
 def normalise_text(text):
@@ -60,8 +60,7 @@ def list_documents(db: Session = Depends(get_db)):
 		{
 			"id": d.id,
 			"filename": d.filename,
-			"word_count": d.word_count,
-			"line_count": d.line_count
+			"word_count": d.word_count
 		} for d in docs
 	]
 
@@ -78,7 +77,6 @@ def get_document(doc_id: int, db: Session = Depends(get_db)):
 		"filename": doc.filename,
 		"content": doc.content,
 		"word_count": doc.word_count,
-		"line_count": doc.line_count
 	}
 
 # search
@@ -248,7 +246,7 @@ async def upload_file(
 ):
 	content = await file.read()
 	text = content.decode("utf-8")
-	doc = Document(filename=file.filename, content=text, word_count=len(text.split()), line_count=len(text.splitlines()))
+	doc = Document(filename=file.filename, content=text, word_count=len(text.split()))
 
 	db.add(doc)
 	db.commit()
@@ -257,6 +255,5 @@ async def upload_file(
 	return {
 		"id": doc.id,
 		"filename": doc.filename,
-		"word_count": doc.word_count,
-		"line_count": doc.line_count
+		"word_count": doc.word_count
 	}
