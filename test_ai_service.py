@@ -1,16 +1,17 @@
 from ai_service import generate_answer
 
-test_question = "When did Brezhnev die?"
+test_question = "When was Reagan elected?"
 
 test_chunks = [
     {
-        "filename": "1976 POD.txt",
+        "filename": "The Last Decade of the Cold War.txt",
         "doc_id": 2,
         "chunk_number": 3,
         "text": (
-            "Leonid Brezhnev died on 26 January 1976. "
-            "His death was followed by a period of political "
-            "uncertainty within the Soviet leadership."
+            "The 1980s were a pivotal decade in the Cold War, marked by significant political and military developments."
+            "Ronald Reagan was elected as the 40th President of the United States in November 1980."
+            "His administration took a hardline stance against the Soviet Union, which was embroiled in both domestic and external challenges."
+            "Reagan's policies, including increased defense spending and the Strategic Defense Initiative, aimed to counter the Soviet threat."
         )
     }
 ]
