@@ -9,18 +9,23 @@ import math
 app = FastAPI()
 init_db()
 
-STOP_WORDS = ["the", "is", "in", "and", "to", "of", "a", "that", "it", 
-			   "on", "for", "with", "as", "this", "by", "an", "be", "are", "from", "at",
-			   "or", "which", "who", "but", "have", "has", "was", "were", "they",
-			   "their", "them", "he", "she", "his", "her", "when", "where", "what", 
-			   "how", "why", "if", "then", "else", "all", "any", "some", "yes", 
-			   "do", "does", "did",]
+STOP_WORDS = {
+    "the", "is", "in", "and", "to", "of", "a", "that", "it",
+    "on", "for", "with", "as", "this", "by", "an", "be", "are",
+    "from", "at", "or", "which", "who", "but", "have", "has",
+    "was", "were", "they", "their", "them", "he", "she", "his",
+    "her", "when", "where", "what", "how", "why", "if", "then",
+    "else", "all", "any", "some", "yes", "do", "does", "did",
+    "explain", "briefly", "describe", "outline", "summarise",
+    "summarize", "tell", "me", "please", "give", "provide"
+}
 
 def normalise_text(text):
-	text = text.lower()
-	text = re.sub(r"'s\b", "", text) # Remove possessive apostrophes
-	text = re.sub(r"[^\w\s]", "", text) # Remove punctuation
-	return text.split()
+    text = text.lower()
+    text = re.sub(r"['\u2019]s\b", "", text) # Remove possessive apostrophes
+    text = re.sub(r"['\u2019]", "", text) # Remove remaining apostrophes
+    text = re.sub(r"[^\w\s]", "", text) # Remove punctuation
+    return text.split()
 
 def split_into_chunks(content):
     content = content.replace("\r\n", "\n").replace("\r", "\n") # Make line breaks consistent (standardise to Unix-style)
