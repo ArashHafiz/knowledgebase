@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getDocuments } from './api'
+import type { DocumentSummary } from './types'
 import './App.css'
 
 type Section = 'documents' | 'search' | 'ask'
@@ -11,6 +13,16 @@ const navigationItems: { id: Section; label: string }[] = [
 
 function App() {
   const [activeSection, setActiveSection] = useState<Section>('documents')
+  const [documents, setDocuments] = useState<DocumentSummary[]>([])
+
+  useEffect(() => {
+    async function loadDocuments() {
+        const data = await getDocuments()
+        setDocuments(data)
+    }
+
+    loadDocuments()
+  }, [])
 
   const activeItem = navigationItems.find(
     (item) => item.id === activeSection,
@@ -71,21 +83,38 @@ function App() {
           </div>
 
           <section className="content-panel">
-            <p className="placeholder-label">COMING NEXT</p>
-            <h2>
-              {activeSection === 'documents' && 'Your documents'}
-              {activeSection === 'search' && 'Search your knowledge base'}
-              {activeSection === 'ask' && 'Ask your knowledge base'}
-            </h2>
-            <p>
-              {activeSection === 'documents' &&
-                'Document upload and document management will appear here.'}
-              {activeSection === 'search' &&
-                'Search controls and matching document passages will appear here.'}
-              {activeSection === 'ask' &&
-                'The question interface and AI-generated answers will appear here.'}
-            </p>
-          </section>
+            {activeSection === 'documents' && (
+                <>
+                    <h2>Your documents</h2>
+
+                    {documents.length === 0 ? (
+                        <p>No documents found.</p>
+                    ) : (
+                        <ul>
+                            {documents.map((document) => (
+                                <li key={document.id}>
+                                    {document.filename} — {document.word_count} words
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
+            )}
+
+            {activeSection === 'search' && (
+                <>
+                    <h2>Search your knowledge base</h2>
+                    <p>Search functionality will be implemented next.</p>
+                </>
+            )}
+
+            {activeSection === 'ask' && (
+                <>
+                    <h2>Ask your knowledge base</h2>
+                    <p>AI question answering will be implemented later.</p>
+                </>
+            )}
+        </section>
         </main>
       </div>
     </div>
