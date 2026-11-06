@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from models import Document
 from database import init_db, get_db
@@ -7,6 +8,14 @@ import re
 import math
 
 app = FastAPI()
+
+app.add_middleware(
+     CORSMiddleware,
+     allow_origins=["http://localhost:5173"],
+     allow_methods=["*"],
+     allow_headers=["*"],
+)
+
 init_db()
 
 STOP_WORDS = {
