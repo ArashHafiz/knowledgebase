@@ -14,11 +14,26 @@ const navigationItems: { id: Section; label: string }[] = [
 function App() {
   const [activeSection, setActiveSection] = useState<Section>('documents')
   const [documents, setDocuments] = useState<DocumentSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadDocuments() {
-        const data = await getDocuments()
-        setDocuments(data)
+        try {
+          setIsLoading(true)
+          setError(null)
+
+          const data = await getDocuments()
+          setDocuments(data)
+        } catch(err) {
+          setError(
+            err instanceof Error
+            ? err.message
+            : 'An unexpected error occurred.'
+          )
+        } finally {
+          setIsLoading(false)
+        }
     }
 
     loadDocuments()
@@ -84,22 +99,30 @@ function App() {
 
           <section className="content-panel">
             {activeSection === 'documents' && (
-                <>
-                    <h2>Your documents</h2>
+              <>
+                  <h2>Your documents</h2>
 
-                    {documents.length === 0 ? (
-                        <p>No documents found.</p>
-                    ) : (
-                        <ul>
-                            {documents.map((document) => (
-                                <li key={document.id}>
-                                    {document.filename} — {document.word_count} words
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </>
-            )}
+                  {isLoading && <p>Loading documents...</p>}
+
+                  {!isLoading && error && (
+                      <p role="alert">{error}</p>
+                  )}
+
+                  {!isLoading && !error && documents.length === 0 && (
+                      <p>No documents found.</p>
+                  )}
+
+                  {!isLoading && !error && documents.length > 0 && (
+                      <ul>
+                          {documents.map((document) => (
+                              <li key={document.id}>
+                                  {document.filename}: {document.word_count} words
+                              </li>
+                          ))}
+                      </ul>
+                  )}
+              </>
+          )}
 
             {activeSection === 'search' && (
                 <>
