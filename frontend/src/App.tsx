@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getDocuments, uploadDocument } from './api'
-import type { DocumentSummary } from './types'
+import { getDocuments, uploadDocument, getDocument } from './api'
+import type { DocumentSummary, DocumentDetail } from './types'
 import './App.css'
 
 type Section = 'documents' | 'search' | 'ask'
@@ -22,6 +22,10 @@ function App() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
   const [inputKey, setInputKey] = useState(0)
+
+  const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null)
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false)
+  const [documentError, setDocumentError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -88,6 +92,25 @@ function App() {
   const activeItem = navigationItems.find(
     (item) => item.id === activeSection,
   )
+
+  async function handleSelectDocument(id: number) {
+    try {
+      setIsLoadingDocument(true)
+      setDocumentError(null)
+      setSelectedDocument(null)
+
+      const data = await getDocument(id)
+      setSelectedDocument(data)
+    } catch (err) {
+      setDocumentError(
+        err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred'
+      )
+    } finally {
+      setIsLoadingDocument(false)
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -190,13 +213,29 @@ function App() {
                   )}
 
                   {!isLoading && !error && documents.length > 0 && (
+                    <>
                       <ul>
                           {documents.map((document) => (
                               <li key={document.id}>
+                                <button
+                                type = "button"
+                                onClick={() => handleSelectDocument(document.id)}
+                                >
                                   {document.filename} — {document.word_count} words
+                                </button>
                               </li>
                           ))}
                       </ul>
+                      {isLoadingDocument && <p>Loading document...</p>}
+                      {documentError && <p role="alert">{documentError}</p>}
+
+                      {selectedDocument && (
+                        <div>
+                          <h3>{selectedDocument.filename}</h3>
+                          <pre className="document-content">{selectedDocument.content}</pre>
+                        </div>
+                      )}
+                    </>
                   )}
               </>
           )}
