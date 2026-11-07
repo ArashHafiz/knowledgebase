@@ -1,4 +1,4 @@
-import type { DocumentSummary, DocumentDetail } from './types';
+import type { DocumentSummary, DocumentDetail, SearchResponse } from './types';
 
 const API_URL = 'http://127.0.0.1:8000'
 
@@ -43,4 +43,15 @@ export async function getDocument(id: number): Promise<DocumentDetail> {
 
     const document : DocumentDetail = await response.json()
     return document
+}
+
+export async function searchDocuments(query: string): Promise<SearchResponse> {
+    const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`)
+
+    if (!response.ok) {
+        throw new Error(`Failed to perform search: ${response.status}`)
+    }
+
+    const searchResult : SearchResponse = await response.json()
+    return searchResult
 }

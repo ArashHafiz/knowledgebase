@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getDocuments, uploadDocument, getDocument } from './api'
-import type { DocumentSummary, DocumentDetail } from './types'
+import { getDocuments, uploadDocument, getDocument, searchDocuments } from './api'
+import type { DocumentSummary, DocumentDetail, SearchResponse } from './types'
 import './App.css'
 
 type Section = 'documents' | 'search' | 'ask'
@@ -26,6 +26,11 @@ function App() {
   const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null)
   const [isLoadingDocument, setIsLoadingDocument] = useState(false)
   const [documentError, setDocumentError] = useState<string | null>(null)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -109,6 +114,30 @@ function App() {
       )
     } finally {
       setIsLoadingDocument(false)
+    }
+  }
+
+  async function handleSearch(query: string) {
+    setIsSearching(true)
+    setSearchError(null)
+
+    const trimmedQuery = query.trim()
+
+    if (!trimmedQuery) {
+      return
+    }
+
+    try {
+      const results = await searchDocuments(trimmedQuery)
+      setSearchResults(results)
+    } catch (err) {
+      setSearchError(
+        err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred'
+      )
+    } finally {
+      setIsSearching(false)
     }
   }
 
@@ -241,10 +270,49 @@ function App() {
           )}
 
             {activeSection === 'search' && (
-                <>
-                    <h2>Search your knowledge base</h2>
-                    <p>Search functionality will be implemented next.</p>
-                </>
+              <>
+                <h2>Search your knowledge base</h2>
+
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    handleSearch(searchQuery)
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search your documents..."
+                  />
+                  <button
+                    type="submit"
+                    disabled={!searchQuery.trim() || isSearching}
+                  >
+                    {isSearching ? 'Searching...' : 'Search'}
+                  </button>
+                </form>
+
+                {searchError && <p role="alert">{searchError}</p>}
+
+                {searchResults && searchResults.results.length === 0 && (
+                  <p>No results found.</p>
+                )}
+
+                {searchResults && searchResults.results.map((doc) => (
+                  <div key={doc.id}>
+                    <h3>{doc.filename}</h3>
+                    <ul>
+                      {doc.results.map((chunk) => (
+                        <li key={chunk.chunk_number}>
+                          <p>Lines {chunk.start_line}–{chunk.end_line}</p>
+                          <p>{chunk.text}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </>
             )}
 
             {activeSection === 'ask' && (
