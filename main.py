@@ -84,7 +84,7 @@ def get_document(doc_id: int, db: Session = Depends(get_db)):
 	doc = db.query(Document).filter(Document.id == doc_id).first()
 
 	if not doc:
-		return {"error": "Document not found"}
+		raise HTTPException(status_code=404, detail="Document not found")
 	
 	return {
 		"id": doc.id,
