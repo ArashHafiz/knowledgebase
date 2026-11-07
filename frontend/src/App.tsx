@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getDocuments } from './api'
+import { getDocuments, uploadDocument } from './api'
 import type { DocumentSummary } from './types'
 import './App.css'
 
@@ -16,6 +16,12 @@ function App() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
+  const [inputKey, setInputKey] = useState(0)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -38,6 +44,46 @@ function App() {
 
     loadDocuments()
   }, [])
+
+  async function handleUpload() {
+    if (!selectedFile) {
+      return
+    }
+
+    setIsUploading(true)
+    setUploadError(null)
+    setUploadSuccess(null)
+
+    try {
+      const uploadedDocument = await uploadDocument(selectedFile)
+
+      setSelectedFile(null)
+      setInputKey((k) => k + 1)
+      setUploadSuccess(
+        `${uploadedDocument.filename} uploaded successfully.`
+      )
+
+      try {
+        const updatedDocuments = await getDocuments()
+        setDocuments(updatedDocuments)
+        setError(null)
+      } catch (err) {
+        setError(
+          err instanceof Error
+          ? err.message
+          : 'Failed to refresh document.'
+        )
+      }
+    } catch (err) {
+      setUploadError(
+        err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred.'
+      )
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const activeItem = navigationItems.find(
     (item) => item.id === activeSection,
@@ -102,6 +148,37 @@ function App() {
               <>
                   <h2>Your documents</h2>
 
+                  <div className="upload-section">
+                      <h3>Upload a document</h3>
+
+                      <input
+                          key={inputKey}
+                          type="file"
+                          accept=".txt,text/plain"
+                          onChange={(event) => {
+                              setSelectedFile(event.target.files?.[0] ?? null)
+                              setUploadError(null)
+                              setUploadSuccess(null)
+                          }}
+                      />
+
+                      <button
+                          type="button"
+                          onClick={handleUpload}
+                          disabled={!selectedFile || isUploading}
+                      >
+                          {isUploading ? 'Uploading...' : 'Upload'}
+                      </button>
+
+                      {uploadError && (
+                          <p role="alert">{uploadError}</p>
+                      )}
+
+                      {uploadSuccess && (
+                          <p>{uploadSuccess}</p>
+                      )}
+                  </div>
+
                   {isLoading && <p>Loading documents...</p>}
 
                   {!isLoading && error && (
@@ -116,7 +193,7 @@ function App() {
                       <ul>
                           {documents.map((document) => (
                               <li key={document.id}>
-                                  {document.filename}: {document.word_count} words
+                                  {document.filename} — {document.word_count} words
                               </li>
                           ))}
                       </ul>
