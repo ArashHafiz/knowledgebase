@@ -1,4 +1,4 @@
-import type { DocumentSummary, DocumentDetail, SearchResponse } from './types';
+import type { DocumentSummary, DocumentDetail, SearchResponse, AskResponse } from './types';
 
 const API_URL = 'http://127.0.0.1:8000'
 
@@ -54,4 +54,21 @@ export async function searchDocuments(query: string): Promise<SearchResponse> {
 
     const searchResult : SearchResponse = await response.json()
     return searchResult
+}
+
+export async function askQuestion(question: string): Promise<AskResponse> {
+    const response = await fetch(`${API_URL}/ask?question=${encodeURIComponent(question)}`, {
+        method: 'POST'
+    })
+
+    if (response.status === 502) {
+        throw new Error('There was an issue with Gemini. Please try again at a later time.')
+    }
+
+    if (!response.ok) {
+        throw new Error(`Failed to ask question: ${response.status}`)
+    }
+
+    const answer : AskResponse = await response.json()
+    return answer
 }

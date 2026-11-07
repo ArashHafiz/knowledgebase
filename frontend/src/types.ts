@@ -29,3 +29,16 @@ export interface SearchResponse {
     total_score: number
     results: SearchDocumentResult[]
 }
+
+export interface AskSource {
+    filename: string
+    doc_id: number
+    chunk_number: number
+    start_line: number
+    end_line: number
+}
+
+export interface AskResponse {
+    answer: string
+    sources: AskSource[]
+}

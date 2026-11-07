@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getDocuments, uploadDocument, getDocument, searchDocuments } from './api'
-import type { DocumentSummary, DocumentDetail, SearchResponse } from './types'
+import { getDocuments, uploadDocument, getDocument, searchDocuments, askQuestion } from './api'
+import type { DocumentSummary, DocumentDetail, SearchResponse, AskResponse } from './types'
 import './App.css'
 
 type Section = 'documents' | 'search' | 'ask'
@@ -31,6 +31,11 @@ function App() {
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+
+  const [question, setQuestion] = useState('')
+  const [askResponse, setAskResponse] = useState<AskResponse | null>(null)
+  const [isAsking, setIsAsking] = useState(false)
+  const [askError, setAskError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -138,6 +143,31 @@ function App() {
       )
     } finally {
       setIsSearching(false)
+    }
+  }
+
+  async function handleAsk(question: string) {
+    const trimmedQuestion = question.trim()
+
+    if (!trimmedQuestion) {
+      return
+    }
+
+    setIsAsking(true)
+    setAskError(null)
+    setAskResponse(null)
+
+    try {
+      const response = await askQuestion(trimmedQuestion)
+      setAskResponse(response)
+    } catch (err) {
+      setAskError(
+        err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred'
+      )
+    } finally {
+      setIsAsking(false)
     }
   }
 
@@ -316,10 +346,49 @@ function App() {
             )}
 
             {activeSection === 'ask' && (
-                <>
-                    <h2>Ask your knowledge base</h2>
-                    <p>AI question answering will be implemented later.</p>
-                </>
+              <>
+                <h2>Ask your knowledge base</h2>
+
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    handleAsk(question)
+                  }}
+                >
+                  <textarea
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="Ask a question about your documents..."
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!question.trim() || isAsking}
+                  >
+                    {isAsking ? 'Thinking...' : 'Ask'}
+                  </button>
+                </form>
+
+                {isAsking && <p>Gemini is thinking. This may take a few seconds...</p>}
+
+                {askError && <p role="alert">{askError}</p>}
+
+                {askResponse && (
+                  <div>
+                    <h3>Answer</h3>
+                    <p className="answer-text">{askResponse.answer}</p>
+
+                    <h3>Sources</h3>
+                    <ul>
+                      {askResponse.sources.map((source) => (
+                        <li key={`${source.doc_id}-${source.chunk_number}`}>
+                          {source.filename}, chunk {source.chunk_number} (lines {source.start_line}–{source.end_line})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
         </section>
         </main>
