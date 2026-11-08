@@ -258,15 +258,23 @@ async def upload_file(
 	file: UploadFile = File(...),
 	db: Session = Depends(get_db)
 ):
-	content = await file.read()
-	text = content.decode("utf-8")
-	doc = Document(filename=file.filename, content=text, word_count=len(text.split()))
+    content = await file.read()
+    
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail="The file must be UTF-8 encoded text."
+        ) from e
 
-	db.add(doc)
-	db.commit()
-	db.refresh(doc)
+    doc = Document(filename=file.filename, content=text, word_count=len(text.split()))
 
-	return {
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    return {
 		"id": doc.id,
 		"filename": doc.filename,
 		"word_count": doc.word_count

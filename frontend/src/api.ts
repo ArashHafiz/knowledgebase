@@ -6,7 +6,7 @@ export async function getDocuments(): Promise<DocumentSummary[]> {
     const response = await fetch(`${API_URL}/documents`)
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch documents (${response.status})`)
+        throw new Error(await getErrorMessage(response, `Failed to fetch documents (${response.status})`))
     }
 
     const documents: DocumentSummary[] = await response.json()
@@ -23,11 +23,11 @@ export async function uploadDocument(file: File): Promise<DocumentSummary> {
     })
 
     if (response.status === 404) {
-        throw new Error('Document not found')
+        throw new Error(await getErrorMessage(response, 'Document not found'))
     }
 
     if (!response.ok) {
-        throw new Error(`Failed to upload document: ${response.status}`)
+        throw new Error(await getErrorMessage(response, `Failed to upload document: ${response.status}`))
     }
 
     const document : DocumentSummary = await response.json()
@@ -38,7 +38,7 @@ export async function getDocument(id: number): Promise<DocumentDetail> {
     const response = await fetch(`${API_URL}/documents/${id}`)
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch document: ${response.status}`)
+        throw new Error(await getErrorMessage(response, `Failed to fetch document: ${response.status}`))
     }
 
     const document : DocumentDetail = await response.json()
@@ -49,7 +49,7 @@ export async function searchDocuments(query: string): Promise<SearchResponse> {
     const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`)
 
     if (!response.ok) {
-        throw new Error(`Failed to perform search: ${response.status}`)
+        throw new Error(await getErrorMessage(response, `Failed to perform search: ${response.status}`))
     }
 
     const searchResult : SearchResponse = await response.json()
@@ -62,13 +62,25 @@ export async function askQuestion(question: string): Promise<AskResponse> {
     })
 
     if (response.status === 502) {
-        throw new Error('There was an issue with Gemini. Please try again at a later time.')
+        throw new Error(await getErrorMessage(response, 'There was an issue with Gemini. Please try again at a later time.'))
     }
 
     if (!response.ok) {
-        throw new Error(`Failed to ask question: ${response.status}`)
+        throw new Error(await getErrorMessage(response, `Failed to ask question: ${response.status}`))
     }
 
     const answer : AskResponse = await response.json()
     return answer
+}
+
+async function getErrorMessage(response: Response, fallback: string): Promise<string> {
+    try {
+        const data : { detail? : unknown } = await response.json()
+        if (typeof data.detail === 'string') {
+            return data.detail
+        }
+    } catch (err) {
+        // Go to fallback
+    }
+    return fallback
 }
