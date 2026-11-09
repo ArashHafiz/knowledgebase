@@ -296,7 +296,7 @@ function App() {
                                 type = "button"
                                 onClick={() => handleSelectDocument(document.id)}
                                 >
-                                  {document.filename} — {document.word_count} words
+                                  {document.filename}, {document.word_count} words
                                 </button>
                               </li>
                           ))}
