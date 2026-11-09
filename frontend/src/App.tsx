@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getDocuments, uploadDocument, getDocument, searchDocuments, askQuestion } from './api'
 import type { DocumentSummary, DocumentDetail, SearchResponse, AskResponse } from './types'
 import './App.css'
@@ -36,6 +36,8 @@ function App() {
   const [askResponse, setAskResponse] = useState<AskResponse | null>(null)
   const [isAsking, setIsAsking] = useState(false)
   const [askError, setAskError] = useState<string | null>(null)
+
+  const latestDocumentRequest = useRef(0)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -104,21 +106,35 @@ function App() {
   )
 
   async function handleSelectDocument(id: number) {
-    try {
+      latestDocumentRequest.current++
+      const requestId = latestDocumentRequest.current
+
       setIsLoadingDocument(true)
       setDocumentError(null)
       setSelectedDocument(null)
 
+    try {
       const data = await getDocument(id)
+
+      if (requestId !== latestDocumentRequest.current) {
+        return
+      }
+
       setSelectedDocument(data)
     } catch (err) {
+      if (requestId !== latestDocumentRequest.current) {
+        return
+      }
+
       setDocumentError(
         err instanceof Error
         ? err.message
-        : 'An unexpected error occurred'
+        : 'An unexpected error occurred.'
       )
     } finally {
-      setIsLoadingDocument(false)
+      if (requestId === latestDocumentRequest.current) {
+        setIsLoadingDocument(false)
+      } 
     }
   }
 
