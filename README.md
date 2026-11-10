@@ -26,7 +26,7 @@ Users can upload text documents, browse and read them, search for relevant passa
 - **Document viewer:** Select a document to read its full content.
 - **Search:** Search across all documents and view matching passages grouped by document, with line ranges.
 - **Ask AI:** Ask a question and receive a generated answer with a list of its sources.
-- **Error handling:** Loading and error states for every request, including friendly messages for Gemini failures.
+- **Error handling:** Loading and error states for every request, the server’s own error messages (such as invalid uploads or missing documents), and a clear message when the backend is unreachable.
 
 ## Tech Stack
 
@@ -51,7 +51,6 @@ knowledgebase/
 ├── models.py            # SQLAlchemy database models
 ├── database.py          # Database engine, sessions and initialisation
 ├── ai_service.py        # Gemini API integration and answer generation
-├── test_*.py            # Scripts for testing the API and Gemini integration
 ├── requirements.txt     # Python dependencies
 ├── .env                 # API credentials and configuration (not committed)
 ├── knowledgebase.db     # SQLite database (created at runtime)
@@ -74,7 +73,7 @@ The SQLite database, virtual environment and `.env` file are local runtime files
 
 ### Prerequisites
 
-- Python 3.10 or later and pip
+- Python 3.11 or later and pip
 - Node.js and npm
 - A Google AI Studio API key
 
@@ -151,6 +150,14 @@ Open **http://localhost:5173**. Use `localhost` rather than `127.0.0.1`: the bac
 | `POST` | `/ask?question={question}` | Retrieve relevant passages and generate an AI-assisted answer |
 | `POST` | `/upload` | Upload and store a text document |
 
+### API Errors
+
+| Status | Meaning |
+|---|---|
+| `400` | Uploaded file is not valid UTF-8 text |
+| `404` | Document not found |
+| `502` | Gemini service failed to generate an answer |
+
 ### Upload a document
 
 `POST /upload` accepts a UTF-8 `.txt` file as multipart form data, with the file field named `file`. The API stores the filename, full text, word count and creation timestamp. Each document receives a unique database ID, so multiple documents can share a filename.
@@ -211,8 +218,8 @@ The `Document` model maps to the SQLite `documents` table.
 - Retrieval reads every document on each request, which will not scale to large collections.
 - Question answering uses a fixed maximum of five passages, which may not always provide enough context.
 - AI-generated answers depend on retrieval quality and may still contain unsupported claims or inaccurate citations.
-- Backend upload validation (file type and size limits) and automated test coverage are still being developed.
-- The frontend is functional but minimally styled. Rapidly selecting several documents can display an earlier response over a later one (a race condition that has not yet been addressed).
+- Upload validation is limited to UTF-8 decoding. There are no file-type or file-size limits yet, and automated test coverage is still being developed.
+- The frontend is functional but minimally styled.
 - The application uses a local SQLite database with no migration framework.
 
 ## Future Development
@@ -223,7 +230,7 @@ The `Document` model maps to the SQLite `documents` table.
 - Add automated tests for endpoints, database operations, retrieval and AI integration.
 - Improve input validation, error handling and database management.
 - Support additional document formats and more robust text extraction.
-- Fix the document-selection race condition and polish the frontend design.
+- Polish the frontend design.
 
 ## Motivation
 
