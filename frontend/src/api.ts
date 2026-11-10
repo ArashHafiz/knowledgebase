@@ -3,7 +3,7 @@ import type { DocumentSummary, DocumentDetail, SearchResponse, AskResponse } fro
 const API_URL = 'http://127.0.0.1:8000'
 
 export async function getDocuments(): Promise<DocumentSummary[]> {
-    const response = await fetch(`${API_URL}/documents`)
+    const response = await safeFetch(`${API_URL}/documents`)
 
     if (!response.ok) {
         throw new Error(await getErrorMessage(response, `Failed to fetch documents (${response.status})`))
@@ -17,7 +17,7 @@ export async function uploadDocument(file: File): Promise<DocumentSummary> {
     const formData = new FormData()
     formData.append('file', file)
 
-    const response = await fetch(`${API_URL}/upload`, {
+    const response = await safeFetch(`${API_URL}/upload`, {
         method: 'POST',
         body: formData,
     })
@@ -35,7 +35,7 @@ export async function uploadDocument(file: File): Promise<DocumentSummary> {
 }
 
 export async function getDocument(id: number): Promise<DocumentDetail> {
-    const response = await fetch(`${API_URL}/documents/${id}`)
+    const response = await safeFetch(`${API_URL}/documents/${id}`)
 
     if (!response.ok) {
         throw new Error(await getErrorMessage(response, `Failed to fetch document: ${response.status}`))
@@ -46,7 +46,7 @@ export async function getDocument(id: number): Promise<DocumentDetail> {
 }
 
 export async function searchDocuments(query: string): Promise<SearchResponse> {
-    const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`)
+    const response = await safeFetch(`${API_URL}/search?query=${encodeURIComponent(query)}`)
 
     if (!response.ok) {
         throw new Error(await getErrorMessage(response, `Failed to perform search: ${response.status}`))
@@ -57,7 +57,7 @@ export async function searchDocuments(query: string): Promise<SearchResponse> {
 }
 
 export async function askQuestion(question: string): Promise<AskResponse> {
-    const response = await fetch(`${API_URL}/ask?question=${encodeURIComponent(question)}`, {
+    const response = await safeFetch(`${API_URL}/ask?question=${encodeURIComponent(question)}`, {
         method: 'POST'
     })
 
@@ -83,4 +83,12 @@ async function getErrorMessage(response: Response, fallback: string): Promise<st
         // Go to fallback
     }
     return fallback
+}
+
+async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
+    try {    
+        return await fetch(url, options)
+    } catch {
+        throw new Error('Could not reach the server. Check that the backend is running.')
+    }
 }
